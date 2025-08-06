@@ -1,0 +1,88 @@
+name: Build TXT to CSV Tool
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # Allow manual triggering from Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact-name: windows-executable
+          - os: macos-latest  
+            artifact-name: macos-executable
+          - os: ubuntu-latest
+            artifact-name: linux-executable
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # Install app dependencies from requirements.txt
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      shell: bash
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --name TXTtoCSVTool txt_to_csv_gui.py
+      shell: bash
+
+    - name: Upload executable artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact-name }}
+        path: dist/
+        retention-days: 30
+
+  # Create a GitHub release with all executables
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only create release on main/master branch
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: TXT to CSV Tool v${{ github.run_number }}
+        body: |
+          🚀 **Automated Release of TXT to CSV Tool**
+          
+          **Download the right version for your system:**
+          - 🪟 **Windows**: Download from `windows-executable.zip`
+          - 🍎 **macOS**: Download from `macos-executable.zip` 
+          - 🐧 **Linux**: Download from `linux-executable.zip`
+          
+          **How to use:**
+          1. Download the zip file for your operating system
+          2. Extract the zip file
+          3. Double-click `TXTtoCSVTool` to run the application
+        files: |
+          windows-executable/*
+          macos-executable/*
+          linux-executable/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
