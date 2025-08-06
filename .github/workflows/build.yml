@@ -1,0 +1,87 @@
+name: Build Helper Tool
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact-name: windows-executable
+            executable-name: MyHelperTool.exe
+          - os: macos-latest
+            artifact-name: macos-executable
+            executable-name: MyHelperTool
+          - os: ubuntu-latest
+            artifact-name: linux-executable
+            executable-name: MyHelperTool
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # Install your app dependencies
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      shell: bash
+
+    - name: Build executable
+      run: |
+        # Replace 'your_app.py' with your actual Python file name
+        pyinstaller --onefile --windowed --name MyHelperTool your_app.py
+      shell: bash
+
+    - name: Upload executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact-name }}
+        path: |
+          dist/MyHelperTool*
+        retention-days: 30
+
+  # Create a release with all executables
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        body: |
+          Automated release of MyHelperTool
+          
+          **Download for your platform:**
+          - Windows: Download from windows-executable folder
+          - macOS: Download from macos-executable folder  
+          - Linux: Download from linux-executable folder
+        files: |
+          windows-executable/*
+          macos-executable/*
+          linux-executable/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
