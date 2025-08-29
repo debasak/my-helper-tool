@@ -26,7 +26,7 @@ jobs:
         pyinstaller --onefile --windowed --name "TINMatchProcessor" --clean --noconfirm tin_match_processor.py
     
     - name: Upload Windows artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: TINMatchProcessor-Windows
         path: dist/TINMatchProcessor.exe
@@ -51,7 +51,7 @@ jobs:
         pyinstaller --onefile --windowed --name "TINMatchProcessor" --clean --noconfirm tin_match_processor.py
     
     - name: Upload macOS artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: TINMatchProcessor-macOS
         path: dist/TINMatchProcessor
